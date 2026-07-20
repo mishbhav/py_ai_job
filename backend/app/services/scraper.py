@@ -30,13 +30,18 @@ from app.models.schemas import ScrapedJob
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# --- Selectors: verify these against the current Naukri DOM before relying on them ---
-SEL_JOB_CARD = "div.srp-jobtuple-wrapper, article.jobTuple"
-SEL_JOB_TITLE = "a.title, a.title.fw500"
-SEL_JOB_COMPANY = "a.comp-name, .comp-name"
-SEL_JOB_LOCATION = "span.locWdth, .location"
-SEL_JOB_LINK = "a.title"
-SEL_JD_BODY = "div.styles_JDC__dang-inner-html, .dang-inner-html, section.job-desc"
+# --- Selectors: Updated to handle modern Naukri structures defensively ---
+SEL_JOB_CARD = "div.srp-jobtuple-wrapper, article.jobTuple, div.cust-job-tuple"
+SEL_JOB_LINK = "a.title, a.comp-name-link"
+
+# Individual Detail Page Layout Selectors
+SEL_JOB_TITLE = "h1.jd-header-title, h1.title, .styles_jd-header-title__18mS_"
+SEL_JOB_COMPANY = "div.jd-header-comp-name a, .styles_jd-header-comp-name__2379Z"
+SEL_JOB_LOCATION = "span.location, .styles_jdc__styles-main-header__3n_v5"
+SEL_JD_BODY = "section.job-desc, div.clearBoth.description, .styles_JDC__dang-inner-html"
+
+# Desktop Browser Spoofing String
+USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 
 class ScrapeError(Exception):
@@ -72,7 +77,8 @@ async def _extract_job_card_links(page: Page, max_jobs: int) -> List[str]:
 
 async def _scrape_single_jd(browser: Browser, url: str) -> Optional[ScrapedJob]:
     for attempt in range(1, settings.SCRAPE_MAX_RETRIES + 2):
-        page = await browser.new_page()
+        # Attach User-Agent here to prevent blank page/captcha walls on detail pages
+        page = await browser.new_page(user_agent=USER_AGENT_STRING)
         try:
             await page.goto(url, timeout=settings.SCRAPE_TIMEOUT_MS, wait_until="domcontentloaded")
             await page.wait_for_selector(SEL_JD_BODY, timeout=settings.SCRAPE_TIMEOUT_MS)
@@ -82,12 +88,17 @@ async def _scrape_single_jd(browser: Browser, url: str) -> Optional[ScrapedJob]:
             location_el = await page.query_selector(SEL_JOB_LOCATION)
             body_el = await page.query_selector(SEL_JD_BODY)
 
+            # Safely check if elements exist before calling await .inner_text()
             title = (await title_el.inner_text()).strip() if title_el else "Unknown title"
-            company = (await company_el.inner_text()).strip() if company_el else None
-            location = (await location_el.inner_text()).strip() if location_el else None
+            company = (await company_el.inner_text()).strip() if company_el else "Unknown company"
+            location = (await location_el.inner_text()).strip() if location_el else "Unknown location"
             body = (await body_el.inner_text()).strip() if body_el else ""
 
+            # This print will now execute safely even if some fields are missing!
+            print(f"💼 Found Job Title: {title} | Company: {company}")
+
             if not body:
+                print(f"⚠️ Warning: Job body element was empty for URL: {url}")
                 return None
 
             return ScrapedJob(
@@ -102,49 +113,67 @@ async def _scrape_single_jd(browser: Browser, url: str) -> Optional[ScrapedJob]:
             await page.close()
     return None
 
-
 async def scrape_naukri_jobs(
     role_query: str,
     location: Optional[str] = None,
     max_jobs: int = 40,
 ) -> List[ScrapedJob]:
-    """
-    Scrape up to `max_jobs` job descriptions for a given role query.
-
-    Returns whatever it manages to collect rather than failing all-or-nothing:
-    a partial result set (e.g. 22 of 40) is still useful for keyword
-    aggregation and match scoring.
-    """
     search_url = _build_search_url(role_query, location)
     results: List[ScrapedJob] = []
 
+    # flush=True forces the terminal to display text immediately without buffering
+    print(f"🚀 [STAGE 1] Initiating Playwright pipeline...", flush=True)
+
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=settings.SCRAPE_HEADLESS)
+        print(f"🤖 [STAGE 2] Launching headless browser wrapper...", flush=True)
+        browser = await p.chromium.launch(headless=True)
+        
         try:
-            page = await browser.new_page()
-            await page.goto(search_url, timeout=settings.SCRAPE_TIMEOUT_MS, wait_until="domcontentloaded")
+            page = await browser.new_page(user_agent=USER_AGENT_STRING)
+            
+            print(f"🌐 [STAGE 3] Navigating to: {search_url}", flush=True)
+            await page.goto(search_url, timeout=15000, wait_until="commit") # Using shorter 15s timeout
+            
+            print("⏳ [STAGE 4] Checking for Naukri elements DOM visibility...", flush=True)
+            try:
+                # Wait for the main container layout wrapper
+                await page.wait_for_selector(SEL_JOB_CARD, timeout=8000)
+                print("🎯 [STAGE 4.5] Success! Container tags identified on page.", flush=True)
+            except Exception as e:
+                print(f"❌ [BLOCKER] Failed to locate job cards. Element layout may be hidden or blocked by a captcha verification screen.", flush=True)
+                # Take a debug snapshot image inside your virtual container file system
+                await page.screenshot(path="naukri_error_debug.png")
+                print("📸 Saved error screenshot to: backend/naukri_error_debug.png", flush=True)
+                raise e
 
             job_links = await _extract_job_card_links(page, max_jobs)
+            print(f"✅ [STAGE 5] Found {len(job_links)} URLs. Processing description details...", flush=True)
             await page.close()
 
-            if not job_links:
-                raise ScrapeError("No job listings found for this search — try a broader role query.")
-
-            for link in job_links:
+            for i, link in enumerate(job_links, start=1):
+                print(f"🕵️‍♂️ [LINK {i}/{len(job_links)}] Accessing: {link}", flush=True)
                 await asyncio.sleep(settings.SCRAPE_MIN_DELAY_S)
                 job = await _scrape_single_jd(browser, link)
                 if job:
                     results.append(job)
+                    
+        except Exception as main_err:
+            print(f"💥 Runtime Exception intercepted in tracking loop: {str(main_err)}", flush=True)
+            raise ScrapeError(
+                f"Scraping failed before any jobs could be collected: {main_err}"
+            ) from main_err
         finally:
             await browser.close()
 
     if not results:
         raise ScrapeError(
-            "Found listings but couldn't extract any job description text — "
-            "selectors are likely out of date."
+            "Scraped the search page but got 0 usable job descriptions — "
+            "selectors are likely stale, or Naukri showed a captcha/block. "
+            "Check backend/naukri_error_debug.png."
         )
 
     return results
+
 
 
 def load_manual_jd_texts(texts: List[str]) -> List[ScrapedJob]:
