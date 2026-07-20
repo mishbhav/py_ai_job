@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     TOP_KEYWORDS_COUNT: int = 10
     TFIDF_MAX_FEATURES: int = 5000
 
+    # Inside your Settings class in app/core/config.py
+    ADZUNA_APP_ID: str = "6af77c45"
+    ADZUNA_APP_KEY: str ="381ed49f7882cd2bdce0ab31ff1805ae"
+
+
     # --- LLM provider selection ---
     # "huggingface_api"  -> free Hugging Face serverless Inference API (needs a free HF token, no billing)
     # "local_transformers" -> fully offline open-source model, no token, no internet needed at inference time
