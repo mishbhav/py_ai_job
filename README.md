@@ -53,7 +53,10 @@ Pipeline: `Upload CV (PDF) → fetch JDs from Adzuna → clean text → TF-IDF m
 - `POST /api/analysis/manual` — same but with `jd_texts[]` instead of live Adzuna queries
 - `GET /api/analysis/{job_id}` — poll for status + results
 - `GET /health` — liveness check
-<img width="2173" height="2503" alt="image" src="https://github.com/user-attachments/assets/5062246a-81d8-490d-954e-8ebec734df9d" />
-
 - `GET /api/analysis/{job_id}` — poll for status + results
 - `GET /health` — liveness check
+
+## FlowDiagram 
+  
+<img width="2173" height="2503" alt="image" src="https://github.com/user-attachments/assets/5062246a-81d8-490d-954e-8ebec734df9d" />
+
