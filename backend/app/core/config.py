@@ -39,10 +39,29 @@ class Settings(BaseSettings):
     TOP_KEYWORDS_COUNT: int = 10
     TFIDF_MAX_FEATURES: int = 5000
 
-    # --- LLM (Anthropic) ---
+    # --- LLM provider selection ---
+    # "huggingface_api"  -> free Hugging Face serverless Inference API (needs a free HF token, no billing)
+    # "local_transformers" -> fully offline open-source model, no token, no internet needed at inference time
+    # "anthropic"        -> paid, kept for anyone who wants higher-quality output
+    LLM_PROVIDER: str = "huggingface_api"
+    LLM_MAX_TOKENS: int = 1500
+
+    # --- Hugging Face free Inference API ---
+    # Create a free token at https://huggingface.co/settings/tokens (read scope is enough).
+    # Which instruct models are "warm" on the free tier changes over time — check
+    # https://huggingface.co/models?pipeline_tag=text-generation&inference_provider=all
+    # and swap HF_INFERENCE_MODEL if this one is unavailable.
+    HF_API_TOKEN: str = ""
+    HF_INFERENCE_MODEL: str = "meta-llama/Llama-3.1-8B-Instruct"
+
+    # --- Fully local/offline model (transformers, runs on CPU) ---
+    # Small enough to run without a GPU in a Codespaces container. Swap for a
+    # bigger checkpoint if your Codespace has more RAM/CPU to spare.
+    LOCAL_MODEL_ID: str = "Qwen/Qwen2.5-1.5B-Instruct"
+
+    # --- Anthropic (optional, paid) ---
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
-    LLM_MAX_TOKENS: int = 1500
 
     # --- Uploads ---
     MAX_CV_SIZE_MB: int = 10

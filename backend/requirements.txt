@@ -18,6 +18,13 @@ nltk==3.8.1
 tensorflow-cpu==2.17.0 ; platform_machine != "arm64"
 tensorflow-macos==2.17.0 ; platform_machine == "arm64"
 
-# LLM client (Anthropic). Swap for openai / huggingface_hub if you prefer.
+# LLM clients — free options by default:
+#   huggingface_hub -> free serverless Inference API (needs only a free token)
+#   transformers + torch -> fully local/offline open-source model, no token needed
+# 'anthropic' is optional; only needed if you set LLM_PROVIDER=anthropic in .env
+huggingface_hub==0.24.6
+transformers==4.44.2
+torch==2.4.1
+accelerate==0.34.2
 anthropic==0.34.2
 httpx==0.27.2
