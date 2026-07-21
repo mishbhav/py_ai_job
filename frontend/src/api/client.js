@@ -60,6 +60,24 @@ export async function submitAnalysis({ roleQuery, location, maxJobs, cvFile }) {
   return response.json(); // { job_id, status }
 }
 
+export async function submitManualAnalysis({ roleQuery, jdTexts, cvFile }) {
+  const formData = new FormData();
+  formData.append("role_query", roleQuery);
+  // Backend expects one form field per JD: jd_texts=..., jd_texts=..., etc.
+  jdTexts.forEach((text) => formData.append("jd_texts", text));
+  formData.append("cv_file", cvFile);
+
+  const response = await fetch(`${API_BASE_URL}/api/analysis/manual`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(await parseErrorResponse(response), response.status);
+  }
+  return response.json(); // { job_id, status }
+}
+
 export async function fetchAnalysisResult(jobId) {
   const response = await fetch(`${API_BASE_URL}/api/analysis/${jobId}`);
   if (!response.ok) {

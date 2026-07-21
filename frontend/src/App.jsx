@@ -2,20 +2,29 @@ import { useState } from "react";
 import AnalysisForm from "./components/AnalysisForm.jsx";
 import MarketFitPanel from "./components/MarketFitPanel.jsx";
 import GapAnalysisPanel from "./components/GapAnalysisPanel.jsx";
-import { submitAnalysis, pollAnalysisUntilDone, ApiError } from "./api/client.js";
+import {
+  submitAnalysis,
+  submitManualAnalysis,
+  pollAnalysisUntilDone,
+  ApiError,
+} from "./api/client.js";
 
 export default function App() {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  async function handleSubmit({ roleQuery, location, maxJobs, cvFile }) {
+  async function handleSubmit({ mode, roleQuery, location, maxJobs, cvFile, jdTexts }) {
     setIsSubmitting(true);
     setSubmitError(null);
     setResult(null);
 
     try {
-      const { job_id } = await submitAnalysis({ roleQuery, location, maxJobs, cvFile });
+      const { job_id } =
+        mode === "manual"
+          ? await submitManualAnalysis({ roleQuery, jdTexts, cvFile })
+          : await submitAnalysis({ roleQuery, location, maxJobs, cvFile });
+
       const finalResult = await pollAnalysisUntilDone(job_id, {
         onUpdate: (partial) => setResult(partial),
       });

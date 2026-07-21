@@ -115,3 +115,61 @@ body {
 .badge-low { background: #14532d; color: #86efac; }
 
 .warning-note { color: #fcd34d; font-size: 0.85rem; }
+.mode-toggle {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.mode-btn {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.mode-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.jd-textarea-field { grid-column: 1 / -1; }
+.field-hint { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.5rem; }
+
+.jd-text-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.jd-text-item { display: flex; flex-direction: column; gap: 0.3rem; }
+.jd-text-item textarea {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+}
+.jd-remove-btn {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  color: #f87171;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+.jd-add-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+.jd-add-btn:hover { color: var(--text); border-color: var(--accent); }
